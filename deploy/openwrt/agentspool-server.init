@@ -1,0 +1,57 @@
+#!/bin/sh /etc/rc.common
+
+START=95
+STOP=10
+USE_PROCD=1
+
+PROG=/usr/bin/agentspool
+
+start_service() {
+        config_load agentspool
+
+	local enabled listen data_dir admin_token allocator_token join_token lease_ttl node_timeout
+        local max_artifact_bytes event_retention public_metrics log_level
+        config_get_bool enabled main enabled 1
+        [ "$enabled" -eq 1 ] || return 0
+
+        config_get listen main listen '0.0.0.0:8090'
+        config_get data_dir main data_dir '/mnt/agentspool/server'
+        config_get admin_token main admin_token
+	config_get allocator_token main allocator_token
+        config_get join_token main join_token
+        config_get lease_ttl main lease_ttl '45s'
+        config_get node_timeout main node_timeout '35s'
+	config_get max_artifact_bytes main max_artifact_bytes '0'
+	config_get event_retention main event_retention '0'
+        config_get_bool public_metrics main public_metrics 0
+        config_get log_level main log_level 'info'
+
+        [ ${#admin_token} -ge 24 ] || { logger -t agentspool 'admin_token is missing or too short'; return 1; }
+	[ ${#allocator_token} -ge 24 ] || { logger -t agentspool 'allocator_token is missing or too short'; return 1; }
+        [ ${#join_token} -ge 24 ] || { logger -t agentspool 'join_token is missing or too short'; return 1; }
+        mkdir -p "$data_dir"
+        chmod 0700 "$data_dir"
+
+        procd_open_instance
+        procd_set_param command "$PROG" server --listen "$listen" --data-dir "$data_dir"
+        procd_set_param env \
+                "AGENTSPOOL_ADMIN_TOKEN=$admin_token" \
+		"AGENTSPOOL_ALLOCATOR_TOKEN=$allocator_token" \
+                "AGENTSPOOL_JOIN_TOKEN=$join_token" \
+                "AGENTSPOOL_LEASE_TTL=$lease_ttl" \
+                "AGENTSPOOL_NODE_TIMEOUT=$node_timeout" \
+                "AGENTSPOOL_MAX_ARTIFACT_BYTES=$max_artifact_bytes" \
+                "AGENTSPOOL_EVENT_RETENTION=$event_retention" \
+                "AGENTSPOOL_PUBLIC_METRICS=$public_metrics" \
+                "AGENTSPOOL_LOG_FORMAT=json" \
+                "AGENTSPOOL_LOG_LEVEL=$log_level"
+        procd_set_param respawn 3600 5 5
+        procd_set_param stdout 1
+        procd_set_param stderr 1
+        procd_set_param file /etc/config/agentspool
+        procd_close_instance
+}
+
+service_triggers() {
+        procd_add_reload_trigger agentspool
+}

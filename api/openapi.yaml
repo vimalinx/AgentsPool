@@ -1,0 +1,2715 @@
+openapi: 3.1.0
+info:
+  title: AgentsPool API
+  version: 0.4.0-alpha.4
+  description: Task-level home Agent compute fabric control-plane API.
+servers:
+- url: http://127.0.0.1:8090
+tags:
+- name: Health
+- name: Workers
+- name: Leases
+- name: Admin
+- name: Nodes
+- name: Tasks
+- name: Logs
+- name: Artifacts
+- name: Events
+- name: Devices
+- name: ResourceLeases
+- name: Sandboxes
+- name: Services
+- name: Maintenance
+paths:
+  /healthz:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: Alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  version:
+                    type: string
+      security: []
+      tags:
+      - Health
+  /readyz:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        '503':
+          description: Not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: []
+      tags:
+      - Health
+  /metrics:
+    get:
+      summary: Prometheus text metrics
+      responses:
+        '200':
+          description: Metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401': &id001
+          description: Authentication required or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: &id010
+      - adminBearer: []
+      tags:
+      - Health
+      description: Authentication may be disabled by the server public_metrics setting.
+  /api/v1/workers/register:
+    post:
+      summary: Register or re-register a worker
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterResponse'
+        '400': &id002
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401': *id001
+        '500': &id004
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security:
+      - joinToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      tags:
+      - Workers
+  /api/v1/workers/{nodeID}/heartbeat:
+    post:
+      summary: Publish worker health/resources and receive cancellation requests
+      responses:
+        '200':
+          description: Heartbeat accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeartbeatResponse'
+        '400': *id002
+        '401': *id001
+        '403': &id003
+          description: Authenticated principal is disabled or forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404': &id011
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: &id005
+      - nodeBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HeartbeatRequest'
+      parameters: &id006
+      - name: nodeID
+        in: path
+        required: true
+        schema:
+          type: string
+      tags:
+      - Workers
+  /api/v1/workers/{nodeID}/claim:
+    post:
+      summary: Atomically claim one matching queued task
+      responses:
+        '200':
+          description: Claim result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimResponse'
+        '400': *id002
+        '401': *id001
+        '403': *id003
+        '500': *id004
+      security: *id005
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClaimRequest'
+      parameters: *id006
+      tags:
+      - Workers
+  /api/v1/leases/{leaseID}/start:
+    post:
+      summary: Mark a leased execution as running
+      responses:
+        '200':
+          description: Started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+                  server_time:
+                    type: string
+                    format: date-time
+        '401': *id001
+        '403': *id003
+        '409': &id007
+          description: State conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      security: &id008
+      - nodeBearer: []
+        leaseToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters: &id009
+      - name: leaseID
+        in: path
+        required: true
+        schema:
+          type: string
+      tags:
+      - Leases
+  /api/v1/leases/{leaseID}/renew:
+    post:
+      summary: Renew a lease and receive cancellation state
+      responses:
+        '200':
+          description: Renewed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  expires_at:
+                    type: string
+                    format: date-time
+                  cancel_requested:
+                    type: boolean
+                  server_time:
+                    type: string
+                    format: date-time
+        '401': *id001
+        '403': *id003
+        '409': *id007
+      security: *id008
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters: *id009
+      tags:
+      - Leases
+  /api/v1/leases/{leaseID}/logs:
+    post:
+      summary: Append an ordered batch of execution logs
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accepted:
+                    type: integer
+        '400': *id002
+        '401': *id001
+        '403': *id003
+        '409': *id007
+        '500': *id004
+      security: *id008
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogBatch'
+      parameters: *id009
+      tags:
+      - Leases
+  /api/v1/leases/{leaseID}/artifacts:
+    post:
+      summary: Upload an output artifact produced by this execution
+      responses:
+        '201':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artifact:
+                    $ref: '#/components/schemas/Artifact'
+        '400': *id002
+        '401': *id001
+        '403': *id003
+        '409': *id007
+        '413': &id014
+          description: Request or artifact too large
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500': *id004
+      security: *id008
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          '*/*':
+            schema:
+              type: string
+              format: binary
+      parameters:
+      - name: leaseID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: name
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: media_type
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: relative_path
+        in: query
+        required: false
+        schema:
+          type: string
+      tags:
+      - Leases
+      - Artifacts
+  /api/v1/leases/{leaseID}/complete:
+    post:
+      summary: Complete an execution successfully
+      responses:
+        '200':
+          description: Completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '400': *id002
+        '401': *id001
+        '403': *id003
+        '409': *id007
+      security: *id008
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteRequest'
+      parameters: *id009
+      tags:
+      - Leases
+  /api/v1/leases/{leaseID}/fail:
+    post:
+      summary: Report an execution failure
+      responses:
+        '200':
+          description: Failure recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '400': *id002
+        '401': *id001
+        '403': *id003
+        '409': *id007
+      security: *id008
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FailRequest'
+      parameters: *id009
+      tags:
+      - Leases
+  /api/v1/leases/{leaseID}/cancelled:
+    post:
+      summary: Acknowledge worker-side cancellation
+      responses:
+        '200':
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '401': *id001
+        '403': *id003
+        '409': *id007
+      security: *id008
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters: *id009
+      tags:
+      - Leases
+  /api/v1/status:
+    get:
+      summary: Pool summary
+      responses:
+        '200':
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401': *id001
+      security: *id010
+      tags:
+      - Admin
+  /api/v1/nodes:
+    get:
+      summary: List nodes
+      responses:
+        '200':
+          description: Nodes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nodes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Node'
+                  count:
+                    type: integer
+        '401': *id001
+      security: *id010
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+      tags:
+      - Nodes
+  /api/v1/nodes/{nodeID}:
+    get:
+      summary: Get node detail
+      responses:
+        '200':
+          description: Node
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  node:
+                    $ref: '#/components/schemas/Node'
+                  active_leases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeasePublic'
+        '401': *id001
+        '404': *id011
+      security: *id010
+      parameters: *id006
+      tags:
+      - Nodes
+    delete:
+      summary: Delete a node with no active lease
+      responses:
+        '204':
+          description: Deleted
+        '401': *id001
+        '404': *id011
+        '409': *id007
+      security: *id010
+      parameters: *id006
+      tags:
+      - Nodes
+  /api/v1/nodes/{nodeID}/drain:
+    post:
+      summary: Drain node
+      responses:
+        '200':
+          description: Node updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  node:
+                    $ref: '#/components/schemas/Node'
+        '401': *id001
+        '404': *id011
+        '409': *id007
+      security: *id010
+      parameters: *id006
+      tags:
+      - Nodes
+  /api/v1/nodes/{nodeID}/enable:
+    post:
+      summary: Enable node
+      responses:
+        '200':
+          description: Node updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  node:
+                    $ref: '#/components/schemas/Node'
+        '401': *id001
+        '404': *id011
+        '409': *id007
+      security: *id010
+      parameters: *id006
+      tags:
+      - Nodes
+  /api/v1/nodes/{nodeID}/disable:
+    post:
+      summary: Disable node
+      responses:
+        '200':
+          description: Node updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  node:
+                    $ref: '#/components/schemas/Node'
+        '401': *id001
+        '404': *id011
+        '409': *id007
+      security: *id010
+      parameters: *id006
+      tags:
+      - Nodes
+  /api/v1/tasks:
+    post:
+      summary: Submit a task
+      responses:
+        '200':
+          description: Existing idempotent task
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskSubmitResponse'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskSubmitResponse'
+        '400': *id002
+        '401': *id001
+        '500': *id004
+      security: *id010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskSpec'
+      tags:
+      - Tasks
+    get:
+      summary: List tasks
+      responses:
+        '200':
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  count:
+                    type: integer
+        '401': *id001
+      security: *id010
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: queue
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: node_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+      tags:
+      - Tasks
+  /api/v1/tasks/{taskID}:
+    get:
+      summary: Get task, execution history and active lease
+      responses:
+        '200':
+          description: Task detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetail'
+        '401': *id001
+        '404': *id011
+      security: *id010
+      parameters: &id012
+      - &id013
+        name: taskID
+        in: path
+        required: true
+        schema:
+          type: string
+      tags:
+      - Tasks
+    delete:
+      summary: Delete a terminal task, execution metadata, and execution logs
+      responses:
+        '200':
+          description: Deletion summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  task_id:
+                    type: string
+                  executions_deleted:
+                    type: integer
+                  logs_deleted:
+                    type: integer
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+        '401': *id001
+        '404': *id011
+        '409': *id007
+        '500': *id004
+      security: *id010
+      parameters: *id012
+      tags:
+      - Tasks
+  /api/v1/tasks/{taskID}/cancel:
+    post:
+      summary: Request task cancellation
+      responses:
+        '200':
+          description: Cancellation state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '401': *id001
+        '404': *id011
+        '409': *id007
+      security: *id010
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters: *id012
+      tags:
+      - Tasks
+  /api/v1/tasks/{taskID}/retry:
+    post:
+      summary: Manually return a terminal/retry-wait task to the queue
+      responses:
+        '200':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  task:
+                    $ref: '#/components/schemas/Task'
+        '400': *id002
+        '401': *id001
+        '404': *id011
+        '409': *id007
+      security: *id010
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RetryRequest'
+      parameters: *id012
+      tags:
+      - Tasks
+  /api/v1/tasks/{taskID}/logs:
+    get:
+      summary: Read logs for the latest or selected task execution
+      responses:
+        '200':
+          description: Logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogResponse'
+        '400': *id002
+        '401': *id001
+        '404': *id011
+        '500': *id004
+      security: *id010
+      parameters:
+      - *id013
+      - name: execution_id
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5000
+      tags:
+      - Logs
+  /api/v1/executions/{executionID}/logs:
+    get:
+      summary: Read logs for an execution
+      responses:
+        '200':
+          description: Logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogResponse'
+        '401': *id001
+        '404': *id011
+        '500': *id004
+      security: *id010
+      parameters:
+      - name: executionID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: after
+        in: query
+        required: false
+        schema:
+          type: integer
+          format: int64
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 5000
+      tags:
+      - Logs
+  /api/v1/artifacts:
+    post:
+      summary: Upload an admin input artifact
+      responses:
+        '201':
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artifact:
+                    $ref: '#/components/schemas/Artifact'
+        '400': *id002
+        '401': *id001
+        '413': *id014
+        '500': *id004
+      security: *id010
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          '*/*':
+            schema:
+              type: string
+              format: binary
+      parameters:
+      - name: name
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: media_type
+        in: query
+        required: false
+        schema:
+          type: string
+      tags:
+      - Artifacts
+    get:
+      summary: List artifact metadata
+      responses:
+        '200':
+          description: Artifacts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artifacts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Artifact'
+                  count:
+                    type: integer
+        '401': *id001
+      security: *id010
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+      tags:
+      - Artifacts
+  /api/v1/artifacts/{artifactID}:
+    get:
+      summary: Get artifact metadata
+      responses:
+        '200':
+          description: Artifact
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  artifact:
+                    $ref: '#/components/schemas/Artifact'
+        '401': *id001
+        '404': *id011
+      security: *id010
+      parameters: &id015
+      - name: artifactID
+        in: path
+        required: true
+        schema:
+          type: string
+      tags:
+      - Artifacts
+    delete:
+      summary: Delete Artifact metadata and content when it is no longer shared
+      description: Refuses referenced Artifacts unless force=true. Forced deletion removes Task, Execution, and Sandbox Operation references.
+      responses:
+        '200':
+          description: Deletion summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted:
+                    type: boolean
+                  artifact_id:
+                    type: string
+                  content_deleted:
+                    type: boolean
+                  references_removed:
+                    type: integer
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+        '401': *id001
+        '404': *id011
+        '409': *id007
+        '500': *id004
+      security: *id010
+      parameters:
+      - name: artifactID
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: force
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+      tags:
+      - Artifacts
+  /api/v1/artifacts/gc:
+    post:
+      summary: Find or delete Artifact files not referenced by metadata
+      responses:
+        '200':
+          description: Garbage-collection summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  dry_run:
+                    type: boolean
+                  orphan_files:
+                    type: integer
+                  orphan_bytes:
+                    type: integer
+                    format: int64
+                  deleted_files:
+                    type: integer
+                  paths:
+                    type: array
+                    items:
+                      type: string
+                  paths_truncated:
+                    type: boolean
+        '400': *id002
+        '401': *id001
+        '500': *id004
+      security: *id010
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                delete:
+                  type: boolean
+                  default: false
+      tags:
+      - Artifacts
+  /api/v1/artifacts/{artifactID}/content:
+    get:
+      summary: Download artifact content
+      responses:
+        '200':
+          description: Artifact bytes
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401': *id001
+        '403': *id003
+        '404': *id011
+        '500': *id004
+      security:
+      - adminBearer: []
+      - nodeBearer: []
+      parameters: *id015
+      tags:
+      - Artifacts
+  /api/v1/events:
+    get:
+      summary: List recent audit events
+      responses:
+        '200':
+          description: Events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                  count:
+                    type: integer
+        '401': *id001
+      security: *id010
+      parameters:
+      - name: type
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+      tags:
+      - Events
+  /api/v1/devices:
+    get:
+      summary: List revisioned device snapshots for Agent placement
+      security:
+      - allocatorBearer: []
+      - adminBearer: []
+      responses:
+        '200':
+          description: Device snapshot and registry revision
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DevicesListResponse'}
+        '401': *id001
+      tags: [Devices]
+  /api/v1/devices/{nodeID}:
+    get:
+      summary: Get one revisioned device snapshot
+      security:
+      - allocatorBearer: []
+      - adminBearer: []
+      parameters:
+      - {name: nodeID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Device snapshot
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeviceGetResponse'}
+        '401': *id001
+        '404': *id011
+      tags: [Devices]
+  /api/v1/devices/{nodeID}/descriptions:
+    put:
+      summary: Create or replace one human or Agent device-description contribution
+      description: Human contributions are authoritative placement intent and require adminBearer. Agent contributions are advisory, accept allocatorBearer, and must not overwrite human contributions.
+      security:
+      - allocatorBearer: []
+      - adminBearer: []
+      parameters:
+      - {name: nodeID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DeviceDescriptionUpsertRequest'}
+      responses:
+        '200':
+          description: Updated description and revision
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeviceDescriptionMutationResponse'}
+        '400': *id002
+        '401': *id001
+        '404': *id011
+        '409': {description: Stale registry revision}
+      tags: [Devices]
+    delete:
+      summary: Remove one sourced device-description contribution
+      security:
+      - allocatorBearer: []
+      - adminBearer: []
+      parameters:
+      - {name: nodeID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DeviceDescriptionRemoveRequest'}
+      responses:
+        '200':
+          description: Remaining descriptions and revision
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DeviceDescriptionMutationResponse'}
+        '400': *id002
+        '401': *id001
+        '404': *id011
+        '409': {description: Stale registry revision}
+      tags: [Devices]
+  /api/v1/devices-watch:
+    get:
+      summary: Long-poll registry changes after a revision
+      security:
+      - allocatorBearer: []
+      - adminBearer: []
+      parameters:
+      - {name: since_revision, in: query, required: true, schema: {type: integer, format: int64, minimum: 0}}
+      - {name: wait_seconds, in: query, required: false, schema: {type: integer, minimum: 0, maximum: 30}}
+      responses:
+        '200': {description: Registry events and current devices}
+        '400': *id002
+        '401': *id001
+      tags: [Devices]
+  /api/v1/resource-leases:
+    post:
+      summary: Reserve CPU, memory, and disk on an Agent-selected node
+      security:
+      - allocatorBearer: []
+      - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ResourceLeaseAcquireRequest'}
+      responses:
+        '201': {description: Resource lease and one-time scoped token}
+        '400': *id002
+        '401': *id001
+        '409': {description: Stale revision or admission denied}
+      tags: [ResourceLeases]
+    get:
+      summary: List resource leases
+      security:
+      - adminBearer: []
+      responses:
+        '200': {description: Resource leases}
+        '401': *id001
+      tags: [ResourceLeases]
+  /api/v1/services:
+    get:
+      summary: List endpoints published by active sandbox Operations and probe declared health URLs
+      security:
+      - allocatorBearer: []
+      - adminBearer: []
+      responses:
+        '200':
+          description: Running services
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PublishedServicesResponse'}
+        '401': *id001
+      tags: [Services]
+  /api/v1/resource-leases/{leaseID}:
+    get:
+      summary: Inspect a scoped resource lease
+      security:
+      - adminBearer: []
+      - resourceLeaseToken: []
+      parameters:
+      - {name: leaseID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Resource lease}
+        '401': *id001
+      tags: [ResourceLeases]
+    delete:
+      summary: Release an unattached resource lease
+      security:
+      - adminBearer: []
+      - resourceLeaseToken: []
+      parameters:
+      - {name: leaseID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Released resource lease}
+        '401': *id001
+        '409': {description: Attached sandbox must be destroyed first}
+      tags: [ResourceLeases]
+  /api/v1/workers/{nodeID}/sandbox-operations/{operationID}/lease:
+    get:
+      summary: Refresh the authoritative lease policy of a claimed operation
+      security:
+      - nodeBearer: []
+        sandboxOperationToken: []
+      parameters:
+      - {name: nodeID, in: path, required: true, schema: {type: string}}
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Current policy; workers enforce the latest confirmed expiry
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [active]
+                properties:
+                  active: {type: boolean}
+                  expires_at: {type: string, format: date-time}
+        '401': {description: Invalid node credentials}
+        '409': {description: Operation claim no longer active}
+      tags: [SandboxOperations]
+  /api/v1/sandbox-operations/{operationID}/logs:
+    get:
+      summary: Read durable sandbox output while running or after completion
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      - {name: stream, in: query, schema: {type: string, enum: [stdout, stderr], default: stdout}}
+      - {name: after, in: query, schema: {type: integer, minimum: 0, default: 0}}
+      - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 65536, default: 65536}}
+      responses:
+        '200':
+          description: A byte page, with a gap indication after opt-in rotation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operation_id: {type: string}
+                  stream: {type: string, enum: [stdout, stderr]}
+                  offset: {type: integer}
+                  next_after: {type: integer}
+                  first_offset: {type: integer}
+                  end_offset: {type: integer}
+                  truncated: {type: boolean}
+                  data: {type: string, description: UTF-8 display text}
+                  data_base64: {type: string, format: byte, description: Exact bytes for lossless concatenation}
+        '401': {description: Invalid scoped credentials}
+        '404': {description: Operation not found}
+      tags: [SandboxOperations]
+    post:
+      summary: Append an idempotent byte chunk from the Worker log spool
+      security:
+      - nodeBearer: []
+        sandboxOperationToken: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [stream, offset, data_base64]
+              properties:
+                stream: {type: string, enum: [stdout, stderr]}
+                offset: {type: integer, minimum: 0}
+                data_base64: {type: string, format: byte}
+                truncated: {type: boolean}
+      responses:
+        '200': {description: Committed byte cursor; duplicate chunks do not duplicate output}
+        '401': {description: Invalid node credentials}
+        '409': {description: Inactive operation or invalid byte cursor}
+      tags: [SandboxOperations]
+  /api/v1/resource-leases/{leaseID}/renew:
+    post:
+      summary: Renew a resource lease
+      security:
+      - adminBearer: []
+      - resourceLeaseToken: []
+      parameters:
+      - {name: leaseID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                ttl_seconds:
+                  type: integer
+                  minimum: 0
+                  description: Omit to retain the current policy, or use 0 for no time deadline.
+      responses:
+        '200': {description: Renewed resource lease}
+        '401': *id001
+        '409': {description: Lease is not active}
+      tags: [ResourceLeases]
+  /api/v1/resource-leases/{leaseID}/resize:
+    post:
+      summary: Resize an unattached resource lease with optimistic concurrency
+      security:
+      - adminBearer: []
+      - resourceLeaseToken: []
+      parameters:
+      - {name: leaseID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '200': {description: Resized resource lease}
+        '400': *id002
+        '401': *id001
+        '409': {description: Stale revision or admission denied}
+      tags: [ResourceLeases]
+  /api/v1/sandboxes:
+    post:
+      summary: Create a persistent sandbox for a resource lease
+      security:
+      - adminBearer: []
+      - resourceLeaseToken: []
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '201': {description: Sandbox, scoped token, and ensure operation}
+        '400': *id002
+        '401': *id001
+        '409': {description: Sandbox cannot be created}
+      tags: [Sandboxes]
+    get:
+      summary: List sandboxes
+      security:
+      - adminBearer: []
+      responses:
+        '200': {description: Sandboxes}
+        '401': *id001
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}:
+    get:
+      summary: Inspect a sandbox and its persistent volumes
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Sandbox and volumes}
+        '401': *id001
+      tags: [Sandboxes]
+    delete:
+      summary: Queue destruction of a sandbox and all persistent data
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      responses:
+        '202': {description: Destroy operation queued}
+        '401': *id001
+        '409': {description: Sandbox is not active}
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/exec:
+    post:
+      summary: Queue command execution inside a persistent sandbox
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/SandboxExecSpec'}}}
+      responses:
+        '202': {description: Exec operation queued}
+        '400': *id002
+        '401': *id001
+        '403': *id003
+        '409': {description: Sandbox or lease is not active}
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/resize:
+    post:
+      summary: Resize an attached sandbox and its resource lease
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '202': {description: Resize operation queued}
+        '400': *id002
+        '401': *id001
+        '409': {description: Stale revision, shrink rejection, or admission denied}
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/rebind:
+    post:
+      summary: Rebind persistent sandbox data to a new same-node resource lease
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+        resourceLeaseToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '202': {description: Ensure operation queued for rebound sandbox}
+        '400': *id002
+        '401': *id001
+        '409': {description: Lease is invalid or on another node}
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/stop:
+    post:
+      summary: Stop using a sandbox without deleting persistent data
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      responses:
+        '202': {description: Stop operation queued}
+        '401': *id001
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/start:
+    post:
+      summary: Start a stopped persistent sandbox using its current active lease
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      responses:
+        '202': {description: Ensure operation queued}
+        '401': *id001
+        '409': {description: Sandbox is not stopped or its lease is inactive}
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/files:
+    post:
+      summary: Upload a content-addressed file and queue a scoped sandbox write
+      security:
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      - {name: path, in: query, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/octet-stream: {schema: {type: string, format: binary}}}
+      responses:
+        '202': {description: Artifact stored and put operation queued}
+        '400': *id002
+        '401': *id001
+        '403': *id003
+        '409': {description: Sandbox or lease is not active}
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/files/export:
+    post:
+      summary: Queue export of a persistent sandbox file
+      security:
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '202': {description: Get operation queued}
+        '400': *id002
+        '401': *id001
+        '403': *id003
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/artifacts/{artifactID}/content:
+    get:
+      summary: Download a sandbox-associated export with its scoped token
+      security:
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      - {name: artifactID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Exported file bytes}
+        '401': *id001
+        '403': *id003
+        '404': *id011
+      tags: [Sandboxes]
+  /api/v1/sandboxes/{sandboxID}/artifacts:
+    get:
+      summary: List file-bridge Artifacts owned by one sandbox
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Sandbox Artifact metadata}
+        '401': *id001
+        '404': *id011
+      tags: [Sandboxes, Artifacts]
+  /api/v1/sandboxes/{sandboxID}/artifacts/{artifactID}:
+    delete:
+      summary: Delete one sandbox-owned terminal Artifact and unreferenced content
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: sandboxID, in: path, required: true, schema: {type: string}}
+      - {name: artifactID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Sandbox Artifact deletion result}
+        '401': *id001
+        '403': *id003
+        '404': *id011
+        '409': *id007
+      tags: [Sandboxes, Artifacts]
+  /api/v1/sandbox-operations/{operationID}:
+    get:
+      summary: Inspect a sandbox operation
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      responses:
+        '200': {description: Sandbox operation}
+        '401': *id001
+        '404': *id011
+      tags: [Sandboxes]
+  /api/v1/sandbox-operations/{operationID}/cancel:
+    post:
+      summary: Request cancellation of a queued, claimed, running, or orphaned sandbox Operation
+      security:
+      - adminBearer: []
+      - sandboxToken: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '200': {description: Cancellation requested or queued Operation cancelled}
+        '401': *id001
+        '404': *id011
+      tags: [Sandboxes]
+  /api/v1/workers/{nodeID}/sandbox-operations/claim:
+    post:
+      summary: Claim the oldest sandbox operation for a node
+      security:
+      - nodeBearer: []
+      parameters:
+      - {name: nodeID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '200': {description: Claimed operation or claimed false}
+        '400': *id002
+        '401': *id001
+        '403': *id003
+      tags: [Workers]
+  /api/v1/workers/{nodeID}/sandbox-operations/{operationID}/reconcile:
+    post:
+      summary: Reconcile an orphaned sandbox service with its real systemd unit
+      security:
+      - nodeBearer: []
+      parameters:
+      - {name: nodeID, in: path, required: true, schema: {type: string}}
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [running]
+              properties:
+                running: {type: boolean}
+                active_state: {type: string}
+                sub_state: {type: string}
+      responses:
+        '200': {description: Reconciled sandbox Operation}
+        '400': *id002
+        '401': *id001
+        '404': *id011
+      tags: [Workers]
+  /api/v1/sandbox-operations/{operationID}/artifact:
+    post:
+      summary: Upload a Worker-produced sandbox file export
+      security:
+      - nodeBearer: []
+        sandboxOperationToken: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/octet-stream: {schema: {type: string, format: binary}}}
+      responses:
+        '201': {description: Export artifact stored}
+        '400': *id002
+        '401': *id001
+        '409': {description: Operation is not exporting}
+      tags: [Workers]
+  /api/v1/sandbox-operations/{operationID}/start:
+    post:
+      summary: Mark a claimed sandbox Operation running and publish its declared endpoints
+      security:
+      - nodeBearer: []
+        sandboxOperationToken: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '200': {description: Operation marked running}
+        '401': *id001
+        '409': {description: Operation claim changed}
+      tags: [Workers]
+  /api/v1/sandbox-operations/{operationID}/cancelled-by-node:
+    post:
+      summary: Reconcile cancellation of an orphaned deterministic systemd Operation
+      security:
+      - nodeBearer: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, additionalProperties: false}}}
+      responses:
+        '200': {description: Operation marked cancelled}
+        '401': *id001
+        '409': {description: Cancellation was not requested}
+      tags: [Workers]
+  /api/v1/sandbox-operations/{operationID}/complete:
+    post:
+      summary: Complete a claimed sandbox operation
+      security:
+      - nodeBearer: []
+        sandboxOperationToken: []
+      parameters:
+      - {name: operationID, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object}}}
+      responses:
+        '200': {description: Completed sandbox operation}
+        '400': *id002
+        '401': *id001
+        '409': {description: Operation claim changed}
+      tags: [Workers]
+  /api/v1/maintenance/prune:
+    post:
+      summary: Preview or prune terminal sandbox history, stale bridge Artifacts, and obsolete observation events
+      description: The default execute=false is a dry run. Terminal Operations belonging to active sandboxes are compactable while non-terminal service Operations remain. AgentsPool never applies an automatic age or TTL deletion policy.
+      security:
+      - adminBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MaintenancePruneRequest'}
+      responses:
+        '200':
+          description: Exact preview or deletion result
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MaintenancePruneResult'}
+        '400': *id002
+        '401': *id001
+      tags: [Maintenance]
+components:
+  securitySchemes:
+    adminBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque admin token
+    allocatorBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque allocator token
+    nodeBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque node token
+    joinToken:
+      type: apiKey
+      in: header
+      name: X-AgentsPool-Join-Token
+    leaseToken:
+      type: apiKey
+      in: header
+      name: X-AgentsPool-Lease-Token
+    resourceLeaseToken:
+      type: apiKey
+      in: header
+      name: X-AgentsPool-Resource-Lease-Token
+    sandboxToken:
+      type: apiKey
+      in: header
+      name: X-AgentsPool-Sandbox-Token
+    sandboxOperationToken:
+      type: apiKey
+      in: header
+      name: X-AgentsPool-Sandbox-Operation-Token
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+    ResourceRequest:
+      type: object
+      additionalProperties: false
+      required: [cpu_millis, memory_mb, disk_mb]
+      properties:
+        cpu_millis: {type: integer, format: int64, minimum: 10}
+        memory_mb: {type: integer, format: int64, minimum: 16}
+        disk_mb: {type: integer, format: int64, minimum: 32}
+      description: GPU fields are intentionally absent and rejected.
+    ResourceLeaseAcquireRequest:
+      type: object
+      additionalProperties: false
+      required: [node_id, expected_revision, resources]
+      properties:
+        node_id: {type: string}
+        owner: {type: string, maxLength: 200}
+        expected_revision: {type: integer, format: int64, minimum: 0}
+        resources: {$ref: '#/components/schemas/ResourceRequest'}
+        ttl_seconds:
+          type: integer
+          minimum: 0
+          description: Optional lifetime in seconds. Omit or use 0 for no time deadline.
+    SandboxExecSpec:
+      type: object
+      additionalProperties: false
+      required: [command]
+      properties:
+        command:
+          type: array
+          minItems: 1
+          items: {type: string}
+        env:
+          type: object
+          additionalProperties: {type: string}
+        working_dir: {type: string}
+        timeout_seconds:
+          type: integer
+          minimum: 0
+          description: Optional execution deadline in seconds. Omit or use 0 for no time deadline.
+        endpoints:
+          type: array
+          description: Endpoints published only while this Operation is running. Network permission is required and the declared port is reserved on the selected node.
+          items: {$ref: '#/components/schemas/SandboxEndpoint'}
+    SandboxEndpoint:
+      type: object
+      additionalProperties: false
+      required: [name, protocol, port, url]
+      properties:
+        name: {type: string}
+        protocol: {type: string, enum: [http, https, tcp]}
+        port: {type: integer, minimum: 1, maximum: 65535}
+        url: {type: string, format: uri}
+        health_url: {type: string, format: uri}
+    SandboxOperation:
+      type: object
+      required: [id, sandbox_id, node_id, kind, status, created_at, updated_at]
+      properties:
+        id: {type: string}
+        sandbox_id: {type: string}
+        node_id: {type: string}
+        kind: {type: string, enum: [ensure, exec, put, get, resize, stop, destroy]}
+        status: {type: string, enum: [queued, claimed, running, orphaned, succeeded, failed, cancelled]}
+        exec: {$ref: '#/components/schemas/SandboxExecSpec'}
+        created_at: {type: string, format: date-time}
+        updated_at: {type: string, format: date-time}
+        claimed_at: {type: string, format: date-time}
+        started_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time}
+        cancel_requested: {type: boolean}
+        cancel_requested_at: {type: string, format: date-time}
+        cancelled_at: {type: string, format: date-time}
+        exit_code: {type: integer}
+        stdout: {type: string}
+        stderr: {type: string}
+        error: {type: string}
+        result_artifact_id: {type: string}
+    PublishedService:
+      type: object
+      required: [sandbox_id, sandbox_name, node_id, operation_id, status, endpoints, health]
+      properties:
+        sandbox_id: {type: string}
+        sandbox_name: {type: string}
+        node_id: {type: string}
+        operation_id: {type: string}
+        status: {type: string, enum: [running, orphaned]}
+        started_at: {type: string, format: date-time}
+        endpoints:
+          type: array
+          items: {$ref: '#/components/schemas/SandboxEndpoint'}
+        health: {type: string, enum: [healthy, unhealthy, unknown]}
+        health_checked_at: {type: string, format: date-time}
+        health_checks:
+          type: array
+          items:
+            type: object
+            required: [endpoint_name, url, healthy]
+            properties:
+              endpoint_name: {type: string}
+              url: {type: string, format: uri}
+              healthy: {type: boolean}
+              http_status: {type: integer}
+              error: {type: string}
+    PublishedServicesResponse:
+      type: object
+      required: [services, count]
+      properties:
+        services:
+          type: array
+          items: {$ref: '#/components/schemas/PublishedService'}
+        count: {type: integer, minimum: 0}
+    MaintenancePruneRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        execute: {type: boolean, default: false}
+    MaintenancePruneResult:
+      type: object
+      required: [dry_run, resource_lease_ids, sandbox_ids, sandbox_volume_ids, sandbox_operation_ids, artifact_ids, artifact_bytes, device_observation_events, resource_leases_deleted, sandboxes_deleted, sandbox_volumes_deleted, sandbox_operations_deleted, artifacts_deleted, artifact_content_files_deleted, registry_observation_events_deleted, warnings]
+      properties:
+        dry_run: {type: boolean}
+        resource_lease_ids: {type: array, items: {type: string}}
+        sandbox_ids: {type: array, items: {type: string}}
+        sandbox_volume_ids: {type: array, items: {type: string}}
+        sandbox_operation_ids: {type: array, items: {type: string}}
+        artifact_ids: {type: array, items: {type: string}}
+        artifact_bytes: {type: integer, format: int64, minimum: 0}
+        device_observation_events: {type: integer, minimum: 0}
+        resource_leases_deleted: {type: integer, minimum: 0}
+        sandboxes_deleted: {type: integer, minimum: 0}
+        sandbox_volumes_deleted: {type: integer, minimum: 0}
+        sandbox_operations_deleted: {type: integer, minimum: 0}
+        artifacts_deleted: {type: integer, minimum: 0}
+        artifact_content_files_deleted: {type: integer, minimum: 0}
+        registry_observation_events_deleted: {type: integer, minimum: 0}
+        warnings: {type: array, items: {type: string}}
+    GPUInfo:
+      type: object
+      description: Observational hardware telemetry only. GPU data never affects task eligibility, scoring, queues, or execution.
+      properties:
+        index:
+          type: integer
+        name:
+          type: string
+        uuid:
+          type: string
+        memory_total_mb:
+          type: integer
+          format: int64
+        memory_free_mb:
+          type: integer
+          format: int64
+        driver_version:
+          type: string
+        compute_runtime:
+          type: string
+    NodeCapabilities:
+      type: object
+      required:
+      - hostname
+      - os
+      - arch
+      - cpu_threads
+      - memory_total_mb
+      - disk_total_mb
+      - capabilities
+      - agent_version
+      properties:
+        hostname:
+          type: string
+        os:
+          type: string
+        arch:
+          type: string
+        cpu_threads:
+          type: integer
+          minimum: 1
+        memory_total_mb:
+          type: integer
+          format: int64
+        disk_total_mb:
+          type: integer
+          format: int64
+        gpus:
+          type: array
+          items:
+            $ref: '#/components/schemas/GPUInfo'
+        capabilities:
+          type: array
+          items:
+            type: string
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        queues:
+          type: array
+          items:
+            type: string
+        agent_version:
+          type: string
+    DeviceDescription:
+      type: object
+      description: A provenance-preserving contribution to how humans and Agents understand a device. Human contributions are authoritative; Agent contributions are advisory.
+      required: [source, author, basis_revision, updated_at]
+      properties:
+        source:
+          type: string
+          enum: [human, agent]
+        author:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 2000
+        availability:
+          type: string
+          enum: [unknown, always_on, scheduled, on_demand]
+        availability_notes:
+          type: string
+          maxLength: 1000
+        service_policy:
+          type: string
+          enum: [unknown, preferred, allowed, avoid, forbidden]
+        preferred_workloads:
+          type: array
+          maxItems: 32
+          items: {type: string, maxLength: 100}
+        avoid_workloads:
+          type: array
+          maxItems: 32
+          items: {type: string, maxLength: 100}
+        constraints:
+          type: array
+          maxItems: 32
+          items: {type: string, maxLength: 500}
+        basis_revision:
+          type: integer
+          format: int64
+          minimum: 0
+        updated_at:
+          type: string
+          format: date-time
+    DeviceDescriptionUpsertRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_revision, source, author]
+      properties:
+        expected_revision: {type: integer, format: int64, minimum: 0}
+        source: {type: string, enum: [human, agent]}
+        author: {type: string, maxLength: 100}
+        description: {type: string, maxLength: 2000}
+        availability: {type: string, enum: [unknown, always_on, scheduled, on_demand]}
+        availability_notes: {type: string, maxLength: 1000}
+        service_policy: {type: string, enum: [unknown, preferred, allowed, avoid, forbidden]}
+        preferred_workloads:
+          type: array
+          maxItems: 32
+          items: {type: string, maxLength: 100}
+        avoid_workloads:
+          type: array
+          maxItems: 32
+          items: {type: string, maxLength: 100}
+        constraints:
+          type: array
+          maxItems: 32
+          items: {type: string, maxLength: 500}
+    DeviceDescriptionRemoveRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_revision, source, author]
+      properties:
+        expected_revision: {type: integer, format: int64, minimum: 0}
+        source: {type: string, enum: [human, agent]}
+        author: {type: string, maxLength: 100}
+    NodeResources:
+      type: object
+      required:
+      - active_jobs
+      - max_concurrency
+      properties:
+        cpu_percent:
+          type: number
+        load_1:
+          type: number
+        memory_available_mb:
+          type: integer
+          format: int64
+        disk_available_mb:
+          type: integer
+          format: int64
+        gpus:
+          type: array
+          items:
+            $ref: '#/components/schemas/GPUInfo'
+        active_jobs:
+          type: integer
+          minimum: 0
+        max_concurrency:
+          type: integer
+          minimum: 1
+        observed_at:
+          type: string
+          format: date-time
+    Node:
+      type: object
+      required:
+      - id
+      - machine_id
+      - name
+      - status
+      - capabilities
+      - resources
+      - registered_at
+      - last_seen_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        machine_id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - online
+          - offline
+          - draining
+          - disabled
+        capabilities:
+          $ref: '#/components/schemas/NodeCapabilities'
+        resources:
+          $ref: '#/components/schemas/NodeResources'
+        descriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceDescription'
+        registered_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        disabled_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+    ResourceQuantity:
+      type: object
+      required: [cpu_millis, memory_mb, disk_mb]
+      properties:
+        cpu_millis: {type: integer, format: int64, minimum: 0}
+        memory_mb: {type: integer, format: int64, minimum: 0}
+        disk_mb: {type: integer, format: int64, minimum: 0}
+    DeviceSnapshot:
+      type: object
+      required: [id, name, status, capabilities, observed, reserved, available, active_sandbox_count, last_seen_at]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        status: {type: string, enum: [online, offline, draining, disabled]}
+        capabilities: {$ref: '#/components/schemas/NodeCapabilities'}
+        descriptions:
+          type: array
+          items: {$ref: '#/components/schemas/DeviceDescription'}
+        observed: {$ref: '#/components/schemas/NodeResources'}
+        reserved: {$ref: '#/components/schemas/ResourceQuantity'}
+        available: {$ref: '#/components/schemas/ResourceQuantity'}
+        active_sandbox_count: {type: integer, minimum: 0}
+        last_seen_at: {type: string, format: date-time}
+    DevicesListResponse:
+      type: object
+      required: [revision, devices]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        devices:
+          type: array
+          items: {$ref: '#/components/schemas/DeviceSnapshot'}
+    DeviceGetResponse:
+      type: object
+      required: [revision, device]
+      properties:
+        revision: {type: integer, format: int64, minimum: 0}
+        device: {$ref: '#/components/schemas/DeviceSnapshot'}
+    DeviceDescriptionMutationResponse:
+      type: object
+      required: [revision, device]
+      properties:
+        created: {type: boolean}
+        removed: {type: boolean}
+        revision: {type: integer, format: int64, minimum: 0}
+        device: {$ref: '#/components/schemas/DeviceSnapshot'}
+    Requirements:
+      type: object
+      properties:
+        capabilities:
+          type: array
+          items:
+            type: string
+        os:
+          type: string
+        arch:
+          type: string
+        min_cpu_threads:
+          type: integer
+          minimum: 0
+        min_memory_mb:
+          type: integer
+          format: int64
+          minimum: 0
+        min_disk_mb:
+          type: integer
+          format: int64
+          minimum: 0
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        allowed_node_ids:
+          type: array
+          items:
+            type: string
+        excluded_node_ids:
+          type: array
+          items:
+            type: string
+        preferred_node_ids:
+          type: array
+          items:
+            type: string
+    ExecutorSpec:
+      type: object
+      required:
+      - kind
+      properties:
+        kind:
+          type: string
+          enum:
+          - shell
+          - process
+          - docker
+        script:
+          type: string
+        command:
+          type: array
+          items:
+            type: string
+        image:
+          type: string
+        env:
+          type: object
+          additionalProperties:
+            type: string
+        work_dir:
+          type: string
+        network:
+          type: string
+          enum:
+          - none
+          - bridge
+          - host
+        cpu_limit:
+          type: number
+          minimum: 0
+        memory_mb:
+          type: integer
+          format: int64
+          minimum: 0
+        user:
+          type: string
+        read_only_root:
+          type: boolean
+    ArtifactInput:
+      type: object
+      required:
+      - artifact_id
+      - path
+      properties:
+        artifact_id:
+          type: string
+        path:
+          type: string
+        executable:
+          type: boolean
+    OutputRule:
+      type: object
+      required:
+      - pattern
+      properties:
+        pattern:
+          type: string
+        required:
+          type: boolean
+        media_type:
+          type: string
+    TaskSpec:
+      type: object
+      required:
+      - name
+      - executor
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        queue:
+          type: string
+          default: default
+        priority:
+          type: integer
+          minimum: -1000
+          maximum: 1000
+        max_attempts:
+          type: integer
+          minimum: 1
+          default: 1
+        timeout_seconds:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Optional execution deadline in seconds. Omit or use 0 for no time deadline.
+        retry_backoff_seconds:
+          type: integer
+          minimum: 1
+          default: 5
+        retry_on_failure:
+          type: boolean
+        side_effect_mode:
+          type: string
+          enum:
+          - none
+          - idempotent
+          - non_idempotent
+          default: none
+        idempotency_key:
+          type: string
+          maxLength: 256
+        requirements:
+          $ref: '#/components/schemas/Requirements'
+        executor:
+          $ref: '#/components/schemas/ExecutorSpec'
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactInput'
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutputRule'
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    TaskResult:
+      type: object
+      required:
+      - exit_code
+      properties:
+        exit_code:
+          type: integer
+        summary:
+          type: string
+        output_artifact_ids:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    Task:
+      type: object
+      required:
+      - id
+      - spec
+      - status
+      - attempts
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+        spec:
+          $ref: '#/components/schemas/TaskSpec'
+        status:
+          type: string
+          enum:
+          - queued
+          - leased
+          - running
+          - retry_wait
+          - succeeded
+          - failed
+          - cancelled
+          - dead_letter
+          - needs_review
+        attempts:
+          type: integer
+        assigned_node_id:
+          type: string
+        active_lease_id:
+          type: string
+        cancel_requested:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        next_eligible_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        last_error:
+          type: string
+        result:
+          oneOf:
+          - $ref: '#/components/schemas/TaskResult'
+          - type: 'null'
+    LeasePublic:
+      type: object
+      properties:
+        id:
+          type: string
+        task_id:
+          type: string
+        node_id:
+          type: string
+        execution_id:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        last_renewed_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+    Execution:
+      type: object
+      required:
+      - id
+      - task_id
+      - node_id
+      - lease_id
+      - attempt
+      - status
+      - created_at
+      properties:
+        id:
+          type: string
+        task_id:
+          type: string
+        node_id:
+          type: string
+        lease_id:
+          type: string
+        attempt:
+          type: integer
+        status:
+          type: string
+          enum:
+          - leased
+          - running
+          - succeeded
+          - failed
+          - cancelled
+          - orphaned
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        exit_code:
+          type:
+          - integer
+          - 'null'
+        error:
+          type: string
+        output_artifact_ids:
+          type: array
+          items:
+            type: string
+        log_sequence:
+          type: integer
+          format: int64
+    Artifact:
+      type: object
+      required:
+      - id
+      - sha256
+      - name
+      - media_type
+      - size
+      - storage_path
+      - created_at
+      properties:
+        id:
+          type: string
+        sha256:
+          type: string
+        name:
+          type: string
+        media_type:
+          type: string
+        size:
+          type: integer
+          format: int64
+        storage_path:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+        producer_task_id:
+          type: string
+        producer_execution_id:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    Event:
+      type: object
+      required:
+      - id
+      - timestamp
+      - type
+      - actor
+      - message
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        type:
+          type: string
+        actor:
+          type: string
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        message:
+          type: string
+        data:
+          type: object
+          additionalProperties:
+            type: string
+    LogEvent:
+      type: object
+      required:
+      - sequence
+      - timestamp
+      - stream
+      - data
+      properties:
+        sequence:
+          type: integer
+          format: int64
+        timestamp:
+          type: string
+          format: date-time
+        stream:
+          type: string
+          enum:
+          - stdout
+          - stderr
+          - system
+        data:
+          type: string
+    RegisterRequest:
+      type: object
+      required:
+      - machine_id
+      - name
+      - capabilities
+      - resources
+      properties:
+        machine_id:
+          type: string
+        name:
+          type: string
+        capabilities:
+          $ref: '#/components/schemas/NodeCapabilities'
+        resources:
+          $ref: '#/components/schemas/NodeResources'
+    RegisterResponse:
+      type: object
+      required:
+      - node
+      - node_token
+      properties:
+        node:
+          $ref: '#/components/schemas/Node'
+        node_token:
+          type: string
+    HeartbeatRequest:
+      type: object
+      required:
+      - resources
+      properties:
+        capabilities:
+          $ref: '#/components/schemas/NodeCapabilities'
+        resources:
+          $ref: '#/components/schemas/NodeResources'
+    HeartbeatResponse:
+      type: object
+      required:
+      - server_time
+      - node_status
+      - cancel_lease_ids
+      - cancel_sandbox_operation_ids
+      properties:
+        server_time:
+          type: string
+          format: date-time
+        node_status:
+          type: string
+        cancel_lease_ids:
+          type: array
+          items:
+            type: string
+        cancel_sandbox_operation_ids:
+          type: array
+          items:
+            type: string
+    ClaimRequest:
+      type: object
+      required:
+      - resources
+      properties:
+        resources:
+          $ref: '#/components/schemas/NodeResources'
+        cached_artifact_ids:
+          type: array
+          maxItems: 10000
+          items:
+            type: string
+    ClaimResponse:
+      type: object
+      required:
+      - claimed
+      properties:
+        claimed:
+          type: boolean
+        task:
+          $ref: '#/components/schemas/Task'
+        lease_id:
+          type: string
+        lease_token:
+          type: string
+        execution_id:
+          type: string
+        lease_expires_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        lease_ttl_seconds:
+          type: integer
+    LogBatch:
+      type: object
+      required:
+      - events
+      properties:
+        events:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/LogEvent'
+    CompleteRequest:
+      type: object
+      required:
+      - exit_code
+      properties:
+        exit_code:
+          type: integer
+          const: 0
+        summary:
+          type: string
+        output_artifact_ids:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    FailRequest:
+      type: object
+      required:
+      - exit_code
+      - error
+      properties:
+        exit_code:
+          type: integer
+        error:
+          type: string
+        output_artifact_ids:
+          type: array
+          items:
+            type: string
+    RetryRequest:
+      type: object
+      properties:
+        reset_attempts:
+          type: boolean
+        acknowledge_non_idempotent:
+          type: boolean
+    TaskSubmitResponse:
+      type: object
+      required:
+      - task
+      - created
+      properties:
+        task:
+          $ref: '#/components/schemas/Task'
+        created:
+          type: boolean
+    TaskDetail:
+      type: object
+      required:
+      - task
+      - executions
+      properties:
+        task:
+          $ref: '#/components/schemas/Task'
+        executions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Execution'
+        active_lease:
+          oneOf:
+          - $ref: '#/components/schemas/LeasePublic'
+          - type: 'null'
+    LogResponse:
+      type: object
+      required:
+      - execution_id
+      - events
+      - next_after
+      properties:
+        execution_id:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: '#/components/schemas/LogEvent'
+        next_after:
+          type: integer
+          format: int64

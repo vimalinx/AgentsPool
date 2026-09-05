@@ -1,0 +1,33 @@
+{
+  "name": "Publish one external item",
+  "idempotency_key": "publish:platform:replace-with-business-id",
+  "max_attempts": 1,
+  "retry_on_failure": false,
+  "side_effect_mode": "non_idempotent",
+  "requirements": {
+    "labels": {
+      "secrets": "publisher"
+    }
+  },
+  "executor": {
+    "kind": "process",
+    "command": ["python3", "publisher.py", "--idempotency-key", "replace-with-business-id"],
+    "env": {
+      "PUBLISH_TOKEN": "${secret:PUBLISH_TOKEN}"
+    }
+  },
+  "inputs": [
+    {
+      "artifact_id": "art_REPLACE_WITH_PUBLISHER_SCRIPT",
+      "path": "publisher.py",
+      "executable": false
+    }
+  ],
+  "outputs": [
+    {
+      "pattern": "receipts/**/*.json",
+      "required": true,
+      "media_type": "application/json"
+    }
+  ]
+}

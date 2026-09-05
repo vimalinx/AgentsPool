@@ -1,0 +1,29 @@
+{
+  "name": "Isolated Docker task",
+  "max_attempts": 2,
+  "retry_on_failure": true,
+  "side_effect_mode": "idempotent",
+  "requirements": {
+    "capabilities": ["executor.docker"]
+  },
+  "executor": {
+    "kind": "docker",
+    "image": "python:3.13-alpine",
+    "command": [
+      "python",
+      "-c",
+      "from pathlib import Path; Path('/workspace/outputs').mkdir(); Path('/workspace/outputs/container.txt').write_text('container-ok\\n')"
+    ],
+    "network": "none",
+    "cpu_limit": 1,
+    "memory_mb": 512,
+    "read_only_root": true
+  },
+  "outputs": [
+    {
+      "pattern": "outputs/container.txt",
+      "required": true,
+      "media_type": "text/plain"
+    }
+  ]
+}

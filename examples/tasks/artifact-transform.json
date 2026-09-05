@@ -1,0 +1,31 @@
+{
+  "name": "Transform an input Artifact",
+  "idempotency_key": "example:artifact-transform:replace-me",
+  "max_attempts": 3,
+  "retry_on_failure": true,
+  "side_effect_mode": "idempotent",
+  "requirements": {
+    "capabilities": ["runtime.python"]
+  },
+  "executor": {
+    "kind": "process",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; src=Path('inputs/source.txt').read_text(); Path('outputs').mkdir(); Path('outputs/upper.txt').write_text(src.upper())"
+    ]
+  },
+  "inputs": [
+    {
+      "artifact_id": "art_REPLACE_ME",
+      "path": "inputs/source.txt"
+    }
+  ],
+  "outputs": [
+    {
+      "pattern": "outputs/upper.txt",
+      "required": true,
+      "media_type": "text/plain"
+    }
+  ]
+}

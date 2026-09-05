@@ -1,0 +1,35 @@
+[Unit]
+Description=AgentsPool control plane
+Documentation=file:/usr/share/doc/agentspool/README.md
+Wants=network-online.target
+After=network-online.target local-fs.target
+
+[Service]
+Type=simple
+User=agentspool-server
+Group=agentspool-server
+EnvironmentFile=/etc/agentspool/server.env
+ExecStart=/usr/local/bin/agentspool server
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=20s
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/agentspool/server
+
+[Install]
+WantedBy=multi-user.target

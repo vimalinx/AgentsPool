@@ -1,0 +1,55 @@
+#!/bin/sh /etc/rc.common
+
+START=96
+STOP=9
+USE_PROCD=1
+
+PROG=/usr/bin/agentspool
+
+start_service() {
+        config_load agentspool
+
+        local enabled server data_dir name join_token labels queues executors max_concurrency request_timeout transfer_timeout log_level
+        config_get_bool enabled router enabled 0
+        [ "$enabled" -eq 1 ] || return 0
+
+        config_get server router server 'http://127.0.0.1:8090'
+        config_get data_dir router data_dir '/mnt/agentspool/worker'
+        config_get name router name 'soft-router'
+        config_get join_token router join_token
+        config_get labels router labels 'role=router'
+        config_get queues router queues 'router-light'
+        config_get executors router executors 'shell,process'
+        config_get max_concurrency router max_concurrency '1'
+        config_get request_timeout router request_timeout '30s'
+        config_get transfer_timeout router transfer_timeout '0'
+        config_get log_level router log_level 'info'
+
+        mkdir -p "$data_dir"
+        chmod 0700 "$data_dir"
+
+        procd_open_instance
+        procd_set_param command "$PROG" worker \
+                --server "$server" \
+                --data-dir "$data_dir" \
+                --name "$name" \
+                --labels "$labels" \
+                --queues "$queues" \
+                --executors "$executors" \
+                --max-concurrency "$max_concurrency" \
+                --request-timeout "$request_timeout" \
+                --transfer-timeout "$transfer_timeout"
+        procd_set_param env \
+                "AGENTSPOOL_JOIN_TOKEN=$join_token" \
+                "AGENTSPOOL_LOG_FORMAT=json" \
+                "AGENTSPOOL_LOG_LEVEL=$log_level"
+        procd_set_param respawn 3600 5 5
+        procd_set_param stdout 1
+        procd_set_param stderr 1
+        procd_set_param file /etc/config/agentspool
+        procd_close_instance
+}
+
+service_triggers() {
+        procd_add_reload_trigger agentspool
+}

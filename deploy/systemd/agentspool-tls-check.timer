@@ -1,0 +1,11 @@
+[Unit]
+Description=Check AgentsPool TLS certificate expiry daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30m
+Unit=agentspool-tls-check.service
+
+[Install]
+WantedBy=timers.target

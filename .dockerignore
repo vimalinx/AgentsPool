@@ -1,0 +1,13 @@
+.git
+.github
+.ai
+dist
+data
+.env
+**/__pycache__
+*.py[cod]
+*.zip
+*.tar.gz
+SHA256SUMS
+TEST_RESULTS.txt
+IMPLEMENTATION_STATUS.zh-CN.md

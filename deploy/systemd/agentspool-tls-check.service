@@ -1,0 +1,9 @@
+[Unit]
+Description=Check AgentsPool TLS certificate expiry
+
+[Service]
+Type=oneshot
+Environment=AGENTSPOOL_TLS_WARN_DAYS=30
+ExecStart=/usr/lib/agentspool/check-tls-expiry.sh
+PrivateTmp=true
+NoNewPrivileges=true

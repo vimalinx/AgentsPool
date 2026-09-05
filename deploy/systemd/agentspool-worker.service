@@ -1,0 +1,37 @@
+[Unit]
+Description=AgentsPool execution worker
+Documentation=file:/usr/share/doc/agentspool/README.md
+Wants=network-online.target agentspool-sandboxd.service
+After=network-online.target local-fs.target agentspool-sandboxd.service
+
+[Service]
+Type=simple
+User=agentspool
+Group=agentspool
+EnvironmentFile=/etc/agentspool/worker.env
+ExecStart=/usr/local/bin/agentspool worker
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=infinity
+KillMode=mixed
+UMask=0077
+
+# These controls also apply to native child tasks. They may read the normal
+# system tree but can write only the worker state/job directory and private /tmp.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+ReadWritePaths=/var/lib/agentspool/worker
+
+[Install]
+WantedBy=multi-user.target

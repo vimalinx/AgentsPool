@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentspool-sdk"
+version = "0.4.0a4"
+description = "Dependency-free Python SDK for the AgentsPool home Agent compute fabric"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [{name = "AgentsPool contributors"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "License :: OSI Approved :: MIT License",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentspool_sdk*"]

@@ -1,0 +1,16 @@
+/dist/*
+!/dist/.gitkeep
+/data/
+/.ai/
+/AgentsPool-v*-source.zip
+/SHA256SUMS
+/TEST_RESULTS.txt
+/IMPLEMENTATION_STATUS.zh-CN.md
+__pycache__/
+*.py[cod]
+*.log
+.env
+.DS_Store
+coverage.out
+/artifacts/*
+!/artifacts/README.md

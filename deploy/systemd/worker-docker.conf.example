@@ -1,0 +1,4 @@
+# Install as /etc/systemd/system/agentspool-worker.service.d/docker.conf
+# only when Docker tasks are required. The docker group is highly privileged.
+[Service]
+SupplementaryGroups=docker

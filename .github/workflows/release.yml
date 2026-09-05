@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  attestations: write
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27.0"
+          cache: true
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.10"
+      - name: Scan complete history for secrets
+        run: |
+          go run github.com/zricethezav/gitleaks/v8@v8.30.0 git . --redact --no-banner
+          python3 scripts/check-public-history.py
+      - name: Install real sandbox test dependencies
+        run: sudo apt-get update && sudo apt-get install -y bubblewrap e2fsprogs util-linux age
+      - name: Verify, test, and package
+        run: |
+          set -eu
+          VERSION="$(awk -F'"' '/const Version/{print $2}' internal/config/config.go)"
+          test "${GITHUB_REF_NAME}" = "v${VERSION}"
+          make check
+          go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+          make race
+          make e2e
+          sudo python3 scripts/e2e-sandboxes.py dist/agentspool
+          make release
+          sudo python3 scripts/e2e-install.py dist/release/*-linux-amd64.tar.gz
+      - name: Attest release provenance
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            dist/release/*.tar.gz
+            dist/release/*-source.zip
+            dist/release/*-complete-release.zip
+            dist/release/SHA256SUMS.txt
+            dist/release/RELEASE_MANIFEST.json
+            dist/release/SBOM.spdx.json
+      - name: Attest the SPDX SBOM for release archives
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: |
+            dist/release/*.tar.gz
+            dist/release/*-source.zip
+            dist/release/*-complete-release.zip
+          sbom-path: dist/release/SBOM.spdx.json
+      - name: Publish immutable GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          dist/release/*
+          --verify-tag
+          --generate-notes
+          --title "AgentsPool ${GITHUB_REF_NAME}"

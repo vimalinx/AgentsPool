@@ -1,0 +1,21 @@
+{
+  "name": "Python process executor",
+  "requirements": {
+    "capabilities": ["runtime.python"]
+  },
+  "executor": {
+    "kind": "process",
+    "command": [
+      "python3",
+      "-c",
+      "from pathlib import Path; import json, platform; Path('outputs').mkdir(); Path('outputs/result.json').write_text(json.dumps({'host': platform.node(), 'ok': True}))"
+    ]
+  },
+  "outputs": [
+    {
+      "pattern": "outputs/result.json",
+      "required": true,
+      "media_type": "application/json"
+    }
+  ]
+}

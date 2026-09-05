@@ -1,0 +1,11 @@
+[Unit]
+Description=Run AgentsPool encrypted off-host backup daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30m
+Unit=agentspool-backup.service
+
+[Install]
+WantedBy=timers.target

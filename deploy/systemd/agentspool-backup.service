@@ -1,0 +1,15 @@
+[Unit]
+Description=AgentsPool encrypted off-host backup
+After=network-online.target agentspool-server.service
+Wants=network-online.target
+ConditionPathExists=/etc/agentspool/backup.env
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/agentspool/backup.env
+ExecStart=/usr/lib/agentspool/backup-server.sh
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+PrivateTmp=true
+NoNewPrivileges=true

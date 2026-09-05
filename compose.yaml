@@ -1,0 +1,38 @@
+services:
+  control-plane:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agentspool:0.4.0-alpha.4
+    command: ["server"]
+    restart: unless-stopped
+    environment:
+      AGENTSPOOL_LISTEN: ":8090"
+      AGENTSPOOL_DATA_DIR: "/var/lib/agentspool/server"
+      AGENTSPOOL_ADMIN_TOKEN: "${AGENTSPOOL_ADMIN_TOKEN:?set AGENTSPOOL_ADMIN_TOKEN in .env}"
+      AGENTSPOOL_ALLOCATOR_TOKEN: "${AGENTSPOOL_ALLOCATOR_TOKEN:?set AGENTSPOOL_ALLOCATOR_TOKEN in .env}"
+      AGENTSPOOL_JOIN_TOKEN: "${AGENTSPOOL_JOIN_TOKEN:?set AGENTSPOOL_JOIN_TOKEN in .env}"
+      AGENTSPOOL_LEASE_TTL: "${AGENTSPOOL_LEASE_TTL:-45s}"
+      AGENTSPOOL_NODE_TIMEOUT: "${AGENTSPOOL_NODE_TIMEOUT:-35s}"
+      AGENTSPOOL_MAX_REQUEST_BYTES: "${AGENTSPOOL_MAX_REQUEST_BYTES:-0}"
+      AGENTSPOOL_MAX_ARTIFACT_BYTES: "${AGENTSPOOL_MAX_ARTIFACT_BYTES:-0}"
+      AGENTSPOOL_EVENT_RETENTION: "${AGENTSPOOL_EVENT_RETENTION:-0}"
+      AGENTSPOOL_PUBLIC_METRICS: "${AGENTSPOOL_PUBLIC_METRICS:-false}"
+    ports:
+      - "${AGENTSPOOL_PUBLISH_ADDRESS:-127.0.0.1}:8090:8090"
+    volumes:
+      - agentspool-server:/var/lib/agentspool/server
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+volumes:
+  agentspool-server:

@@ -1,0 +1,28 @@
+[Unit]
+Description=AgentsPool privileged sandbox helper
+Documentation=file:/usr/share/doc/agentspool/README.md
+After=local-fs.target
+Before=agentspool-worker.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=-/etc/agentspool/sandbox.env
+ExecStart=/usr/local/bin/agentspool sandboxd
+Restart=on-failure
+RestartSec=3s
+RuntimeDirectory=agentspool
+RuntimeDirectoryMode=0755
+UMask=0077
+
+# Mounts created for persistent ext4 images must be visible to the transient
+# bwrap units started by PID 1, so this service intentionally does not enable
+# ProtectHome/ProtectSystem/private mount-namespace options. Host paths are
+# filtered by the strict Unix-socket protocol and each bwrap mount namespace.
+RestrictRealtime=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target
