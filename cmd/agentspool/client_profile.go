@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/client"
 )
 
 type clientProfile struct {

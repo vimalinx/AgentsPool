@@ -41,7 +41,7 @@ build_target() {
       env CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -buildvcs=false -trimpath -ldflags='-s -w' -o "$stage/$binary" "$package_path"
     fi
   done
-  cp README.md README.en.md START_HERE.zh-CN.md LICENSE CHANGELOG.md SECURITY.md compose.yaml .env.example "$stage/"
+  cp README.md README.en.md START_HERE.zh-CN.md LICENSE CHANGELOG.md CONTRIBUTING.md SECURITY.md compose.yaml .env.example "$stage/"
   cp deploy/Dockerfile.binary "$stage/Dockerfile"
   cp -R .agents "$stage/"
   cp examples/tasks/*.json "$stage/examples/tasks/"
@@ -127,7 +127,7 @@ while offset < len(process.stdout):
 if not modules or not modules[0].get('Main'):
     raise SystemExit('go list did not return the main module first')
 created=datetime.datetime.fromtimestamp(epoch,datetime.timezone.utc).replace(microsecond=0).isoformat().replace('+00:00','Z')
-namespace_uuid=uuid.uuid5(uuid.NAMESPACE_URL,f'github.com/qiyuehuajin/agentspool/{version}/{epoch}')
+namespace_uuid=uuid.uuid5(uuid.NAMESPACE_URL,f'github.com/vimalinx/AgentsPool/{version}/{epoch}')
 packages=[]
 relationships=[]
 main_id='SPDXRef-Package-AgentsPool'
@@ -139,7 +139,7 @@ for index,module in enumerate(modules):
         'SPDXID':spdx_id,
         'versionInfo':module_version,
         'downloadLocation':(
-            f'https://github.com/qiyuehuajin/agentspool/releases/download/v{version}/AgentsPool-v{version}-source.zip'
+            f'https://github.com/vimalinx/AgentsPool/releases/download/v{version}/AgentsPool-v{version}-source.zip'
             if module.get('Main') else 'NOASSERTION'
         ),
         'filesAnalyzed':False,
@@ -161,7 +161,7 @@ document={
     'dataLicense':'CC0-1.0',
     'SPDXID':'SPDXRef-DOCUMENT',
     'name':f'AgentsPool-v{version}',
-    'documentNamespace':f'https://github.com/qiyuehuajin/agentspool/spdx/{version}/{namespace_uuid}',
+    'documentNamespace':f'https://github.com/vimalinx/AgentsPool/spdx/{version}/{namespace_uuid}',
     'creationInfo':{'created':created,'creators':['Tool: AgentsPool release builder']},
     'packages':packages,
     'relationships':relationships,

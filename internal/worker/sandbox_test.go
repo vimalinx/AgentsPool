@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
-	"github.com/qiyuehuajin/agentspool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/config"
 )
 
 func TestSandboxControlReportRetriesTransientFailureWithoutOverallDeadline(t *testing.T) {

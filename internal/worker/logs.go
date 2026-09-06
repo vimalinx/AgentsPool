@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
-	"github.com/qiyuehuajin/agentspool/internal/store"
+	"github.com/vimalinx/AgentsPool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/store"
 )
 
 type logBatcher struct {

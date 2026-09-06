@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 func (s *Server) recoverState() error {

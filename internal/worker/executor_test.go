@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/config"
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 func TestNativeExecutorRunsAndCapturesOutput(t *testing.T) {

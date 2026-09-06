@@ -20,8 +20,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/core"
-	"github.com/qiyuehuajin/agentspool/internal/logstream"
+	"github.com/vimalinx/AgentsPool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/logstream"
 )
 
 type Config struct {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/qiyuehuajin/agentspool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/config"
 )
 
 func TestGPUDetectionIsTelemetryOnly(t *testing.T) {

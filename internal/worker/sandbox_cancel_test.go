@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/config"
-	"github.com/qiyuehuajin/agentspool/internal/sandboxd"
+	"github.com/vimalinx/AgentsPool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/sandboxd"
 )
 
 type recordingSandboxHelper struct {

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 type ClaimRequest struct {

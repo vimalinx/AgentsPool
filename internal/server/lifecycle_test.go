@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/config"
-	"github.com/qiyuehuajin/agentspool/internal/core"
-	"github.com/qiyuehuajin/agentspool/internal/store"
+	"github.com/vimalinx/AgentsPool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/store"
 )
 
 func leaseState(sideEffect, executionStatus string, attempts, maxAttempts int) (core.State, *core.Lease, *core.Task) {

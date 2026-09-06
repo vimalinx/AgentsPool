@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/config"
 )
 
 type APIError struct {

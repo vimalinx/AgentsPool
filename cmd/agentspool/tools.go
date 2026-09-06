@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 type toolCallOptions struct {

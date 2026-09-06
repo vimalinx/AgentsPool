@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 func TestCollectOutputFilesRecursiveGlob(t *testing.T) {

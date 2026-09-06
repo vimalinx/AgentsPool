@@ -19,13 +19,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
-	"github.com/qiyuehuajin/agentspool/internal/config"
-	"github.com/qiyuehuajin/agentspool/internal/core"
-	"github.com/qiyuehuajin/agentspool/internal/sandboxd"
-	"github.com/qiyuehuajin/agentspool/internal/server"
-	"github.com/qiyuehuajin/agentspool/internal/store"
-	"github.com/qiyuehuajin/agentspool/internal/worker"
+	"github.com/vimalinx/AgentsPool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/sandboxd"
+	"github.com/vimalinx/AgentsPool/internal/server"
+	"github.com/vimalinx/AgentsPool/internal/store"
+	"github.com/vimalinx/AgentsPool/internal/worker"
 )
 
 func main() {

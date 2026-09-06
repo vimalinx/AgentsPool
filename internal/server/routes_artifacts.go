@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 func (s *Server) handleAdminArtifactUpload(w http.ResponseWriter, r *http.Request) {

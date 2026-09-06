@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check publishable Git history for deployment identifiers; report paths, not values."""
 import re
+from pathlib import Path
 import subprocess
 import sys
 
@@ -11,6 +12,7 @@ patterns = [
     re.compile(rb'\b(?:node|task|exec|art)_[0-9a-f]{16,}\b'),
 ]
 root = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip()
+public_module = re.search(r'^module (\S+)$', (Path(root) / 'go.mod').read_text(), re.M).group(1).encode()
 listing = subprocess.check_output(['git', '-C', root, 'rev-list', '--objects', '--all'], text=True)
 checked, failures = set(), []
 for line in listing.splitlines():
@@ -24,6 +26,7 @@ for line in listing.splitlines():
         continue
     checked.add(sha)
     data = subprocess.check_output(['git', '-C', root, 'cat-file', 'blob', sha])
+    data = data.replace(public_module, b'github.com/public/project')
     if b'\x00' not in data and any(pattern.search(data) for pattern in patterns):
         failures.append((sha[:12], path))
 for sha, path in failures:

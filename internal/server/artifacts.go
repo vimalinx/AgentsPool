@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 func (s *Server) ingestArtifact(w http.ResponseWriter, r *http.Request, name, mediaType, producerTaskID, producerExecutionID string, metadata map[string]string) (*core.Artifact, error) {

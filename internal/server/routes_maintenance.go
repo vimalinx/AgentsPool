@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/core"
 )
 
 type maintenancePruneRequest struct {

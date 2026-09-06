@@ -14,10 +14,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
-	"github.com/qiyuehuajin/agentspool/internal/config"
-	"github.com/qiyuehuajin/agentspool/internal/core"
-	"github.com/qiyuehuajin/agentspool/internal/sandboxd"
+	"github.com/vimalinx/AgentsPool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/sandboxd"
 )
 
 type credentials struct {

@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
-	"github.com/qiyuehuajin/agentspool/internal/core"
-	"github.com/qiyuehuajin/agentspool/internal/logstream"
+	"github.com/vimalinx/AgentsPool/internal/core"
+	"github.com/vimalinx/AgentsPool/internal/logstream"
 	"net/http"
 	"strconv"
 	"strings"

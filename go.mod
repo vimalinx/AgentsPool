@@ -1,3 +1,3 @@
-module github.com/qiyuehuajin/agentspool
+module github.com/vimalinx/AgentsPool
 
 go 1.23

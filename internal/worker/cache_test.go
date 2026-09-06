@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/client"
 )
 
 func TestArtifactCacheConcurrentMaterializeDownloadsOnce(t *testing.T) {

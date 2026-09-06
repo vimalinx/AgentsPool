@@ -20,7 +20,7 @@ def match_version(label,file,pattern):
 def check_versions():
     values={
       'Go config':match_version('Go config','internal/config/config.go',r'const Version = "([^"]+)"'),
-      'README':match_version('README','README.md',r'当前版本：\*\*([^*]+)\*\*'),
+      'README':match_version('README','README.md',r'当前版本[：\s]+\*\*([^*]+)\*\*'),
       'English README':match_version('English README','README.en.md',r'Version \*\*([^*]+)\*\*'),
       'Compose':match_version('Compose','compose.yaml',r'image: agentspool:([^\s]+)'),
       'Task OpenAPI':match_version('Task OpenAPI','api/openapi.yaml',r'^  version: ([^\s]+)'),
@@ -204,6 +204,7 @@ def check_open_source_hardening():
         if not (ROOT/required).is_file():error(f'missing open-source readiness file: {required}')
 
 def check_public_privacy():
+    public_module=re.search(r'^module (\S+)$',read('go.mod'),re.MULTILINE).group(1)
     private_path_or_ip=re.compile(r'/home/(?!agent\b)[A-Za-z0-9._-]+|\b192\.168\.\d{1,3}\.\d{1,3}\b')
     private_labels=('ide'+'apad','ras'+'pi','vi'+'malinx')
     private_label=re.compile(r'\b(?:'+"|".join(map(re.escape,private_labels))+r')[A-Za-z0-9._-]*\b',re.IGNORECASE)
@@ -214,6 +215,8 @@ def check_public_privacy():
             if path.resolve()==Path(__file__).resolve():continue
             try:text=path.read_text(encoding='utf-8')
             except UnicodeDecodeError:continue
+            # A canonical public module URL is not a private deployment label.
+            text=text.replace(public_module,'github.com/public/project')
             if private_path_or_ip.search(text):error(f'{path.relative_to(ROOT)} contains a private home path or LAN address')
             if private_label.search(text):error(f'{path.relative_to(ROOT)} contains a private deployment label')
             if generated_id.search(text):error(f'{path.relative_to(ROOT)} contains a generated deployment object ID')

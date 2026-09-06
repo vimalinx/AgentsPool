@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/client"
+	"github.com/vimalinx/AgentsPool/internal/client"
 )
 
 type artifactCache struct {

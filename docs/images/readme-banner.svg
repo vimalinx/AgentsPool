@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">AgentsPool · Your agents. Your machines.</title>
+  <desc id="desc">A shared compute pool for a trusted LAN. A control plane connects to machines with persistent workspaces.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#22353d" stroke-width="0.6"/></pattern>
+  </defs>
+  <rect width="1200" height="360" rx="16" fill="#101e25"/>
+  <rect x="620" width="580" height="360" rx="16" fill="url(#grid)"/>
+  <path d="M64 68h21m-21 8h14m-14 8h21" fill="none" stroke="#88e2c5" stroke-width="3" stroke-linecap="round"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="102" y="82" fill="#c2d2d8" font-size="15" letter-spacing="3">COMPUTE ON YOUR TERMS</text>
+    <text x="62" y="162" fill="#f3f7f8" font-size="64" font-weight="700" letter-spacing="-2">AgentsPool</text>
+    <text x="64" y="211" fill="#88e2c5" font-size="26">Your agents. Your machines.</text>
+    <text x="64" y="248" fill="#b0c4cd" font-size="19">A shared compute pool for your LAN.</text>
+    <text x="64" y="308" fill="#b0c4cd" font-size="13" letter-spacing="1.7">ONE BINARY</text>
+    <circle cx="185" cy="303" r="2" fill="#5d7885"/>
+    <text x="203" y="308" fill="#b0c4cd" font-size="13" letter-spacing="1.7">PERSISTENT WORKSPACES</text>
+  </g>
+  <g stroke="#5b998d" stroke-width="2" fill="none">
+    <path d="M788 180h46V82h54M834 180h54M834 180v98h54"/>
+    <path d="M628 180h24" stroke-dasharray="4 5"/>
+  </g>
+  <circle cx="834" cy="180" r="5" fill="#88e2c5"/>
+  <rect x="652" y="126" width="136" height="108" rx="12" fill="#1b343d" stroke="#4e7b79"/>
+  <g stroke="#88e2c5" stroke-width="2" fill="none">
+    <rect x="701" y="148" width="38" height="27" rx="4"/>
+    <path d="M710 180h20M720 175v5M708 158h6m-6 7h24"/>
+  </g>
+  <text x="720" y="207" fill="#e4f4ef" font-family="Arial, Helvetica, sans-serif" font-size="14" text-anchor="middle">Control plane</text>
+  <g fill="#172a32" stroke="#3b5661">
+    <rect x="888" y="44" width="248" height="76" rx="10"/>
+    <rect x="888" y="142" width="248" height="76" rx="10"/>
+    <rect x="888" y="240" width="248" height="76" rx="10"/>
+  </g>
+  <g fill="none" stroke="#88e2c5" stroke-width="2">
+    <rect x="909" y="64" width="27" height="32" rx="4"/><path d="M915 74h15m-15 8h15m-15 8h4"/>
+    <rect x="907" y="162" width="31" height="23" rx="3"/><path d="M903 193h39l-4-8h-31z"/>
+    <rect x="907" y="260" width="31" height="31" rx="5"/><rect x="916" y="269" width="13" height="13" rx="2"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <g fill="#f3f7f8" font-size="17" font-weight="700">
+      <text x="955" y="76">Server</text><text x="955" y="174">Workstation</text><text x="955" y="272">Edge machine</text>
+    </g>
+    <g fill="#b0c4cd" font-size="13">
+      <text x="955" y="98">Builds and services</text><text x="955" y="196">Tests and file processing</text><text x="955" y="294">Lightweight workloads</text>
+    </g>
+  </g>
+</svg>

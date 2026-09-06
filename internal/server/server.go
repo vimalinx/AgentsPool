@@ -14,9 +14,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/qiyuehuajin/agentspool/internal/config"
-	"github.com/qiyuehuajin/agentspool/internal/logstream"
-	"github.com/qiyuehuajin/agentspool/internal/store"
+	"github.com/vimalinx/AgentsPool/internal/config"
+	"github.com/vimalinx/AgentsPool/internal/logstream"
+	"github.com/vimalinx/AgentsPool/internal/store"
 )
 
 type Metrics struct {
